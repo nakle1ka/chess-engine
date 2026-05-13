@@ -6,16 +6,20 @@
 
 Attacks::Attacks(Rays *_rays) : rays(_rays) {}
 
-bitboard Attacks::get_pawn_advances(COLORS color, bitboard bb)
+bitboard Attacks::get_pawn_advances(COLORS color, bitboard bb, bitboard blockers)
 {
-    switch (color)
+    if (color == COLORS::WHITE)
     {
-    case COLORS::WHITE:
-        return (bb << 8) | (bb & RANK_2) << 16;
-    case COLORS::BLACK:
-        return (bb >> 8) | (bb & RANK_7) >> 16;
+        bitboard single_push = (bb << 8) & ~blockers;
+        bitboard double_push = ((single_push & RANK_3) << 8) & ~blockers;
+        return single_push | double_push;
     }
-    return 0;
+    else
+    {
+        bitboard single_push = (bb >> 8) & ~blockers;
+        bitboard double_push = ((single_push & RANK_6) >> 8) & ~blockers;
+        return single_push | double_push;
+    }
 }
 
 bitboard Attacks::get_pawn_attacks(COLORS color, bitboard bb)

@@ -291,7 +291,7 @@ bool Board::validate_pawn_move(Move move)
     {
         if (move.from % 8 != move.to % 8)
             return false;
-        bitboard moves = attacks->get_pawn_advances(move.color, pawns);
+        bitboard moves = attacks->get_pawn_advances(move.color, pawns, blockers);
         return (1ULL << move.to) & moves & ~blockers;
     }
     case MOVE_TYPE::CAPTURE:

@@ -9,7 +9,7 @@ private:
 public:
     Attacks(Rays *_rays);
 
-    bitboard get_pawn_advances(COLORS color, bitboard bb);
+    bitboard get_pawn_advances(COLORS color, bitboard bb, bitboard blockers);
     bitboard get_pawn_attacks(COLORS color, bitboard bb);
     bitboard get_knights_attacks(bitboard bb);
     bitboard get_king_attacks(bitboard bb);

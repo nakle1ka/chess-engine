@@ -130,41 +130,62 @@ MoveList Board::ugly_moves()
         add_piece_moves(from, color, queen_mask, list);
     }
 
-    if (is_white_turn && (castle_rights & (1ULL << 0)) && (blockers & WHITE_OO_MASK) == 0)
-        list.add({4, 6,
-                  MOVE_TYPE::CASTLE,
-                  COLORS::WHITE,
-                  PIECE_TYPE::KING,
-                  PIECE_TYPE::NONE,
-                  PIECE_TYPE::NONE,
-                  castle_rights});
+    if (is_white_turn)
+    {
+        if (
+            (castle_rights & (1ULL << 0)) &&
+            (blockers & WHITE_OO_MASK) == 0 &&
+            !is_line_attacked(COLORS::BLACK, 4, 6)
+        )
+            list.add({4, 6,
+                      MOVE_TYPE::CASTLE,
+                      COLORS::WHITE,
+                      PIECE_TYPE::KING,
+                      PIECE_TYPE::NONE,
+                      PIECE_TYPE::NONE,
+                      castle_rights});
 
-    if (is_white_turn && (castle_rights & (1ULL << 1)) && (blockers & WHITE_OOO_MASK) == 0)
-        list.add({4, 2,
-                  MOVE_TYPE::CASTLE,
-                  COLORS::WHITE,
-                  PIECE_TYPE::KING,
-                  PIECE_TYPE::NONE,
-                  PIECE_TYPE::NONE,
-                  castle_rights});
+        if (
+            (castle_rights & (1ULL << 1)) &&
+            (blockers & WHITE_OOO_MASK) == 0 &&
+            !is_line_attacked(COLORS::BLACK, 2, 4)
+        )
+            list.add({4, 2,
+                      MOVE_TYPE::CASTLE,
+                      COLORS::WHITE,
+                      PIECE_TYPE::KING,
+                      PIECE_TYPE::NONE,
+                      PIECE_TYPE::NONE,
+                      castle_rights});
+    }
+    else
+    {
+        if (
+            (castle_rights & (1ULL << 2)) &&
+            (blockers & BLACK_OO_MASK) == 0 &&
+            !is_line_attacked(COLORS::WHITE, 60, 62)
+        )
+            list.add({60, 62,
+                      MOVE_TYPE::CASTLE,
+                      COLORS::BLACK,
+                      PIECE_TYPE::KING,
+                      PIECE_TYPE::NONE,
+                      PIECE_TYPE::NONE,
+                      castle_rights});
 
-    if (!is_white_turn && (castle_rights & (1ULL << 2)) && (blockers & BLACK_OO_MASK) == 0)
-        list.add({60, 62,
-                  MOVE_TYPE::CASTLE,
-                  COLORS::BLACK,
-                  PIECE_TYPE::KING,
-                  PIECE_TYPE::NONE,
-                  PIECE_TYPE::NONE,
-                  castle_rights});
-
-    if (!is_white_turn && (castle_rights & (1ULL << 3)) && (blockers & BLACK_OOO_MASK) == 0)
-        list.add({60, 58,
-                  MOVE_TYPE::CASTLE,
-                  COLORS::BLACK,
-                  PIECE_TYPE::KING,
-                  PIECE_TYPE::NONE,
-                  PIECE_TYPE::NONE,
-                  castle_rights});
+        if (
+            (castle_rights & (1ULL << 3)) &&
+            (blockers & BLACK_OOO_MASK) == 0 &&
+            !is_line_attacked(COLORS::WHITE, 58, 60)
+        )
+            list.add({60, 58,
+                      MOVE_TYPE::CASTLE,
+                      COLORS::BLACK,
+                      PIECE_TYPE::KING,
+                      PIECE_TYPE::NONE,
+                      PIECE_TYPE::NONE,
+                      castle_rights});
+    }
 
     return list;
 }

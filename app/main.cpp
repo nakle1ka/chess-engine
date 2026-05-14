@@ -9,13 +9,9 @@ int main()
     system("chcp 65001");
     Rays rays;
     Attacks attacks(&rays);
-    Board board(&attacks); 
-    board.set_default();
-    // board.add_piece(4, COLORS::WHITE, PIECE_TYPE::KING);
-    // board.add_piece(0, COLORS::WHITE, PIECE_TYPE::ROOK);
-    // board.add_piece(63, COLORS::BLACK, PIECE_TYPE::KING);
-    ChessVisual game(&board);
-    game.play();
+    Board board(&attacks); board.set_default();
+    AI ai(&board);
+    ChessVisual game(&board, &ai); game.play();
 
     return 0;
 }

@@ -5,6 +5,8 @@ run_app:
 	internal/board/board.cpp \
 	internal/attacks/attacks.cpp \
 	internal/chess_visual/chess_visual.cpp \
+	internal/AI/AI.cpp \
+	-I internal/AI \
 	-I internal/board \
 	-I internal/rays \
 	-I internal/attacks \

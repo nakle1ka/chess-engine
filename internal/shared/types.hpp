@@ -4,22 +4,22 @@
 
 using bitboard = uint64_t;
 
-enum class COLORS
+enum class COLORS : uint8_t
 {
     WHITE,
     BLACK
 };
 
-enum class MOVE_TYPE
+enum class MOVE_TYPE : uint8_t
 {
-    NORMAL, 
-    CAPTURE, 
-    CASTLE, 
-    EN_PASSANT, 
+    NORMAL,
+    CAPTURE,
+    CASTLE,
+    EN_PASSANT,
     PROMOTION
 };
 
-enum class PIECE_TYPE
+enum class PIECE_TYPE : uint8_t
 {
     KING,
     QUEEN,
@@ -30,21 +30,8 @@ enum class PIECE_TYPE
     NONE
 };
 
-struct Move
+enum class DIRECTION
 {
-    int from, to;
-    MOVE_TYPE type;
-
-    COLORS color;
-    PIECE_TYPE piece;
-    PIECE_TYPE captured;
-    PIECE_TYPE promoutioned;
-
-    uint8_t castle_rights;
-};
-
-
-enum class DIRECTION {
     NORTH,
     NORTH_EAST,
     EAST,

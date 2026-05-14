@@ -2,25 +2,43 @@
 
 #include <cstdint>
 #include <vector>
+#include <utility>
 #include "../attacks/attacks.hpp"
+#include "../shared/move.hpp"
+
+struct MoveList
+{
+    Move moves[256];
+    int count = 0;
+
+    inline void add(Move move)
+    {
+        moves[count++] = move;
+    }
+};
 
 class Board
 {
 private:
     Attacks *attacks;
+
     std::vector<Move> history;
     bool is_white_turn = true;
-    uint8_t castle_rights = 0b1111; // use the first 4 bits
+    uint8_t castle_rights = 0b0000;
 
+    std::pair<PIECE_TYPE, COLORS> mailbox[64];
+
+    bitboard w_pieces = 0, b_pieces = 0;
     bitboard b_king = 0, b_queen = 0, b_rooks = 0, b_bishops = 0, b_knights = 0, b_pawns = 0;
     bitboard w_king = 0, w_queen = 0, w_rooks = 0, w_bishops = 0, w_knights = 0, w_pawns = 0;
-
-    bitboard w_pieces, b_pieces;
 
 public:
     Board(Attacks *_attacks);
 
     void set_default();
+    std::pair<PIECE_TYPE, COLORS> piece_at(int sq);
+
+    bool is_game_end();
 
     bool make_move(Move move);
     void ugly_move(Move move);
@@ -29,30 +47,12 @@ public:
     void add_piece(int sq, COLORS color, PIECE_TYPE piece);
     void remove_piece(int sq, COLORS color, PIECE_TYPE piece);
 
-    bitboard get_position()
-    {
-        return w_pieces | b_pieces;
-    }
+    MoveList ugly_moves();
 
-    bitboard getBlackKing() const { return b_king; }
-    bitboard getBlackQueen() const { return b_queen; }
-    bitboard getBlackRooks() const { return b_rooks; }
-    bitboard getBlackBishops() const { return b_bishops; }
-    bitboard getBlackKnights() const { return b_knights; }
-    bitboard getBlackPawns() const { return b_pawns; }
+    bool is_king_checked(COLORS color);
 
-  
-    bitboard getWhiteKing() const { return w_king; }
-    bitboard getWhiteQueen() const { return w_queen; }
-    bitboard getWhiteRooks() const { return w_rooks; }
-    bitboard getWhiteBishops() const { return w_bishops; }
-    bitboard getWhiteKnights() const { return w_knights; }
-    bitboard getWhitePawns() const { return w_pawns; }
-
-    COLORS get_turn_color()
-    {
-        return is_white_turn ? COLORS::WHITE : COLORS::BLACK;
-    }
+    COLORS get_turn_color() const;
+    
 
 private:
     bool validate_move(Move move);
@@ -60,7 +60,11 @@ private:
     bool validate_pawn_move(Move move);
     bool validate_basic_attack(Move move);
 
-    bool is_king_checked(COLORS color, int sq);
+    void add_piece_moves(int from, COLORS color, bitboard attack_mask, MoveList &list);
+    void add_pawns_moves(COLORS color, MOVE_TYPE type, bitboard attack_mask, int shift, MoveList &list);
+    void add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int shift, MoveList &list);
+
+    bool is_square_attacked(COLORS color, int sq);
     void update_piece(int sq, COLORS color, PIECE_TYPE piece, bool add);
     bitboard *get_bitboard_by_piece(COLORS color, PIECE_TYPE piece);
 };

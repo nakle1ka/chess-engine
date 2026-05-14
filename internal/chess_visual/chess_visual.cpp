@@ -1,9 +1,7 @@
 #include "./chess_visual.hpp"
+#include "../shared/move.hpp"
 
-ChessVisual::ChessVisual(Board *_board)
-{
-    board = _board;
-}
+ChessVisual::ChessVisual(Board *_board, AI *_ai) : board(_board), ai(_ai) {};
 
 int ChessVisual::piece_to_index(PIECE_TYPE piece)
 {
@@ -26,49 +24,6 @@ int ChessVisual::piece_to_index(PIECE_TYPE piece)
     }
 }
 
-PIECE_TYPE ChessVisual::get_piece_at(int square)
-{
-    bitboard sq_bit = 1ULL << square;
-
-    if (board->getWhiteKing() & sq_bit)
-        return PIECE_TYPE::KING;
-    if (board->getWhiteQueen() & sq_bit)
-        return PIECE_TYPE::QUEEN;
-    if (board->getWhiteRooks() & sq_bit)
-        return PIECE_TYPE::ROOK;
-    if (board->getWhiteBishops() & sq_bit)
-        return PIECE_TYPE::BISHOP;
-    if (board->getWhiteKnights() & sq_bit)
-        return PIECE_TYPE::KNIGHT;
-    if (board->getWhitePawns() & sq_bit)
-        return PIECE_TYPE::PAWN;
-
-    if (board->getBlackKing() & sq_bit)
-        return PIECE_TYPE::KING;
-    if (board->getBlackQueen() & sq_bit)
-        return PIECE_TYPE::QUEEN;
-    if (board->getBlackRooks() & sq_bit)
-        return PIECE_TYPE::ROOK;
-    if (board->getBlackBishops() & sq_bit)
-        return PIECE_TYPE::BISHOP;
-    if (board->getBlackKnights() & sq_bit)
-        return PIECE_TYPE::KNIGHT;
-    if (board->getBlackPawns() & sq_bit)
-        return PIECE_TYPE::PAWN;
-
-    return PIECE_TYPE::NONE;
-}
-
-COLORS ChessVisual::get_color_at(int square)
-{
-    bitboard sq_bit = 1ULL << square;
-    bitboard white_pieces = board->getWhiteKing() | board->getWhiteQueen() |
-                            board->getWhiteRooks() | board->getWhiteBishops() |
-                            board->getWhiteKnights() | board->getWhitePawns();
-
-    return (white_pieces & sq_bit) ? COLORS::WHITE : COLORS::BLACK;
-}
-
 void ChessVisual::display()
 {
 
@@ -87,7 +42,7 @@ void ChessVisual::display()
         for (int file = 0; file < 8; file++)
         {
             int square = rank * 8 + file;
-            PIECE_TYPE piece = get_piece_at(square);
+            auto [piece, color] = board->piece_at(square);
 
             if (piece == PIECE_TYPE::NONE)
             {
@@ -98,7 +53,7 @@ void ChessVisual::display()
             }
             else
             {
-                bool is_white = (get_color_at(square) == COLORS::WHITE);
+                bool is_white = (color == COLORS::WHITE);
                 int index = piece_to_index(piece);
                 std::cout << " " << PIECE_SYMBOLS[is_white ? 0 : 1][index] << " ";
             }
@@ -132,47 +87,50 @@ Move ChessVisual::parse_move(const std::string &input)
     int from = from_rank * 8 + from_file;
     int to = to_rank * 8 + to_file;
 
+    
+
     Move move;
-    move.from = from;
-    move.to = to;
-    move.color = board->get_turn_color();
-    move.piece = get_piece_at(from);
-    move.captured = get_piece_at(to);
-    move.promoutioned = PIECE_TYPE::NONE;
-    move.type = determine_move_type(move, input);
+    move.set_from(from);
+    move.set_to(to);
+    move.set_color(board->get_turn_color());
+    move.set_piece(board->piece_at(from).first);
+    move.set_captured(board->piece_at(to).first);
+    move.set_promotion(PIECE_TYPE::NONE);
+    move.set_type(determine_move_type(move, input));
 
     return move;
 }
 
 MOVE_TYPE ChessVisual::determine_move_type(Move &move, const std::string &input)
 {
-    if (move.piece == PIECE_TYPE::KING && abs(move.to - move.from) == 2)
+    if (move.get_piece() == PIECE_TYPE::KING && abs(move.get_to() - move.get_from()) == 2)
         return MOVE_TYPE::CASTLE;
 
-    if (move.piece == PIECE_TYPE::PAWN)
+    if (move.get_piece() == PIECE_TYPE::PAWN)
     {
-        int target_rank = (move.color == COLORS::WHITE) ? 7 : 0;
-        if (move.to / 8 == target_rank)
+        int target_rank = (move.get_color() == COLORS::WHITE) ? 7 : 0;
+        if (move.get_to() / 8 == target_rank)
         {
+            PIECE_TYPE promotion = PIECE_TYPE::QUEEN;
             if (input.length() > 4)
             {
                 char prom_char = input[4];
                 switch (tolower(prom_char))
                 {
                 case 'q':
-                    move.promoutioned = PIECE_TYPE::QUEEN;
+                    promotion = PIECE_TYPE::QUEEN;
                     break;
                 case 'r':
-                    move.promoutioned = PIECE_TYPE::ROOK;
+                    promotion = PIECE_TYPE::ROOK;
                     break;
                 case 'b':
-                    move.promoutioned = PIECE_TYPE::BISHOP;
+                    promotion = PIECE_TYPE::BISHOP;
                     break;
                 case 'n':
-                    move.promoutioned = PIECE_TYPE::KNIGHT;
+                    promotion = PIECE_TYPE::KNIGHT;
                     break;
                 default:
-                    move.promoutioned = PIECE_TYPE::QUEEN;
+                    promotion = PIECE_TYPE::QUEEN;
                 }
             }
             else
@@ -183,35 +141,36 @@ MOVE_TYPE ChessVisual::determine_move_type(Move &move, const std::string &input)
                 switch (prom_char)
                 {
                 case 'q':
-                    move.promoutioned = PIECE_TYPE::QUEEN;
+                    promotion = PIECE_TYPE::QUEEN;
                     break;
                 case 'r':
-                    move.promoutioned = PIECE_TYPE::ROOK;
+                    promotion = PIECE_TYPE::ROOK;
                     break;
                 case 'b':
-                    move.promoutioned = PIECE_TYPE::BISHOP;
+                    promotion = PIECE_TYPE::BISHOP;
                     break;
                 case 'n':
-                    move.promoutioned = PIECE_TYPE::KNIGHT;
+                    promotion = PIECE_TYPE::KNIGHT;
                     break;
                 default:
-                    move.promoutioned = PIECE_TYPE::QUEEN;
+                    promotion = PIECE_TYPE::QUEEN;
                 }
             }
+            move.set_promotion(promotion);
             return MOVE_TYPE::PROMOTION;
         }
     }
 
-    if (move.piece == PIECE_TYPE::PAWN && move.captured == PIECE_TYPE::NONE)
+    if (move.get_piece() == PIECE_TYPE::PAWN && move.get_captured() == PIECE_TYPE::NONE)
     {
-        int file_diff = abs((move.from % 8) - (move.to % 8));
+        int file_diff = abs((move.get_from() % 8) - (move.get_to() % 8));
         if (file_diff == 1)
         {
             return MOVE_TYPE::EN_PASSANT;
         }
     }
 
-    if (move.captured != PIECE_TYPE::NONE)
+    if (move.get_captured() != PIECE_TYPE::NONE)
     {
         return MOVE_TYPE::CAPTURE;
     }
@@ -222,12 +181,14 @@ MOVE_TYPE ChessVisual::determine_move_type(Move &move, const std::string &input)
 void ChessVisual::play()
 {
     std::string input;
+    display();
 
     while (true)
     {
-        display();
+        COLORS turn_color = board->get_turn_color();
+        COLORS opponent_color = turn_color == COLORS::WHITE ? COLORS::BLACK : COLORS::WHITE;
 
-        std::cout << (board->get_turn_color() == COLORS::WHITE ? "White" : "Black") << "'s turn: ";
+        std::cout << (turn_color == COLORS::WHITE ? "White" : "Black") << "'s turn: ";
         std::getline(std::cin, input);
 
         if (input == "quit" || input == "exit")
@@ -237,14 +198,8 @@ void ChessVisual::play()
 
         if (input == "undo")
         {
-            try
-            {
-                board->undo_move();
-            }
-            catch (...)
-            {
-                std::cout << "Cannot undo move!\n";
-            }
+
+            board->undo_move();
             continue;
         }
 
@@ -254,6 +209,32 @@ void ChessVisual::play()
         if (!moved)
         {
             std::cout << "Invalid move\n";
+            continue;
+        }
+
+        display();
+
+        if (board->is_game_end())
+        {
+            if (board->is_king_checked(opponent_color))
+                std::cout << (turn_color == COLORS::WHITE ? "White's " : "Black's ") << "win!\n";
+            else
+                std::cout << "Stalemate!\n";
+            break;
+        }
+
+        Move alg_move = ai->get_best_move(5);
+        board->ugly_move(alg_move);
+
+        display();
+
+        if (board->is_game_end())
+        {
+            if (board->is_king_checked(turn_color))
+                std::cout << (opponent_color == COLORS::WHITE ? "White`s " : "Black`s ") << "win!\n";
+            else
+                std::cout << "Stalemate!\n";
+            break;
         }
     }
 }

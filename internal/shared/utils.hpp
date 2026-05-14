@@ -60,3 +60,7 @@ inline int bitScanReverse(bitboard bb) {
    bb |= bb >> 32;
    return index64[(bb * debruijn64) >> 58];
 }
+
+inline int get_bites(int value, int from_bit, int to_bit) {
+    return (value >> from_bit) & ((1 << (to_bit - from_bit + 1)) - 1);
+}

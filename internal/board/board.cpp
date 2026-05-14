@@ -1,9 +1,8 @@
 #include <tuple>
-#include "./board.hpp"
+#include "board.hpp"
 #include "../shared/types.hpp"
 #include "../shared/constants.hpp"
 #include "../shared/utils.hpp"
-#include "board.hpp"
 
 // from-to position, mask, rights index
 std::tuple<int, int, bitboard, int> castles[] = {
@@ -57,7 +56,9 @@ MoveList Board::ugly_moves()
     bitboard opponent_pieces = is_white_turn ? b_pieces : w_pieces;
     bitboard rank_8_or_1 = is_white_turn ? RANK_8 : RANK_1;
 
-    bitboard short_push = is_white_turn ? (pawns << 8) & ~blockers : (pawns >> 8) & ~blockers;
+    bitboard short_push = is_white_turn
+                              ? (pawns << 8) & ~blockers
+                              : (pawns >> 8) & ~blockers;
 
     bitboard normal_short = short_push & ~rank_8_or_1;
     bitboard promo_short = short_push & rank_8_or_1;
@@ -172,7 +173,7 @@ bool Board::is_king_checked(COLORS color)
 {
     bitboard king = color == COLORS::WHITE ? w_king : b_king;
     int king_position = bitScanForward(king);
-    return is_square_attacked(color, king_position);
+    return is_square_attacked(reverse_color(color), king_position);
 }
 
 void Board::add_piece_moves(
@@ -267,7 +268,7 @@ bool Board::make_move(Move move)
 void Board::ugly_move(Move move)
 {
     move.set_castle_rights(castle_rights);
-    COLORS opponent_color = is_white_turn ? COLORS::BLACK : COLORS::WHITE;
+    COLORS opponent_color = reverse_color(move.get_color());
 
     remove_piece(move.get_from(), move.get_color(), move.get_piece());
 
@@ -461,7 +462,7 @@ bool Board::validate_move(Move move)
     bitboard king_bb = (move.get_color() == COLORS::WHITE) ? w_king : b_king;
     int king_position = bitScanForward(king_bb);
 
-    bool res = !is_square_attacked(move.get_color(), king_position);
+    bool res = !is_square_attacked(reverse_color(move.get_color()), king_position);
     undo_move();
 
     return res;
@@ -477,6 +478,8 @@ bool Board::validate_king_move(Move move)
         int offset = move.get_color() == COLORS::WHITE ? 0 : 2;
         bitboard blockers = w_pieces | b_pieces;
 
+        COLORS opponent_color = reverse_color(move.get_color());
+
         for (int i = 0; i < 2; i++)
         {
             auto &[from, to, mask, rights_bit] = castles[offset + i];
@@ -487,19 +490,7 @@ bool Board::validate_king_move(Move move)
                 if ((castle_rights & (1 << rights_bit)) == 0)
                     return false;
 
-                bool is_valid = true;
-                int step = from < to ? +1 : -1;
-                for (int sq = from; sq != to + step; sq += step)
-                {
-                    bool checked = is_square_attacked(move.get_color(), sq);
-                    if (checked)
-                    {
-                        is_valid = false;
-                        break;
-                    }
-                }
-
-                return is_valid;
+                return !is_line_attacked(opponent_color, from, to);
             }
         }
     }
@@ -605,8 +596,6 @@ bool Board::validate_pawn_move(Move move)
 
 bool Board::validate_basic_attack(Move move)
 {
-    bool is_white = move.get_color() == COLORS::WHITE;
-
     bitboard piece = *get_bitboard_by_piece(move.get_color(), move.get_piece());
     bitboard piece_attacks;
     bitboard blockers = w_pieces | b_pieces;
@@ -643,7 +632,7 @@ bool Board::validate_basic_attack(Move move)
 
     case MOVE_TYPE::CAPTURE:
     {
-        COLORS opponent_color = is_white ? COLORS::BLACK : COLORS::WHITE;
+        COLORS opponent_color = reverse_color(move.get_color());
         bitboard opponent_piece = *get_bitboard_by_piece(opponent_color, move.get_captured());
         return (1ULL << move.get_to()) & piece_attacks & opponent_piece;
     }
@@ -718,27 +707,39 @@ bitboard *Board::get_bitboard_by_piece(COLORS color, PIECE_TYPE piece)
 bool Board::is_square_attacked(COLORS color, int sq)
 {
     bool is_white = color == COLORS::WHITE;
-    bitboard blockers = w_pieces | b_pieces;
+    bitboard blockers = b_pieces | w_pieces;
 
     bitboard L = attacks->get_knights_attacks(1ULL << sq);
-    if ((is_white ? b_knights : w_knights) & L)
+    if ((is_white ? w_knights : b_knights) & L)
         return true;
 
     bitboard diagonal = attacks->get_bishop_attacks(sq, blockers);
-    if ((is_white ? b_bishops | b_queen : w_bishops | w_queen) & diagonal)
+    if ((is_white ? w_bishops | w_queen : b_bishops | b_queen) & diagonal)
         return true;
 
     bitboard straight = attacks->get_rook_attacks(sq, blockers);
-    if ((is_white ? b_rooks | b_queen : w_rooks | w_queen) & straight)
+    if ((is_white ? w_rooks | w_queen : b_rooks | b_queen) & straight)
         return true;
 
-    bitboard pawns = attacks->get_pawn_attacks(color, 1ULL << sq);
-    if ((is_white ? b_pawns : w_pawns) & pawns)
+    bitboard pawns = attacks->get_pawn_attacks(reverse_color(color), 1ULL << sq);
+    if ((is_white ? w_pawns : b_pawns) & pawns)
         return true;
 
     bitboard king = attacks->get_king_attacks(1ULL << sq);
-    if ((is_white ? b_king : w_king) & king)
+    if ((is_white ? w_king : b_king) & king)
         return true;
+
+    return false;
+}
+
+bool Board::is_line_attacked(COLORS color, int from, int to)
+{
+    if (from < to)
+        std::swap(from, to);
+
+    for (int i = from; i <= to; ++i)
+        if (is_square_attacked(color, i))
+            return true;
 
     return false;
 }

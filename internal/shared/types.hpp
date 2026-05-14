@@ -10,6 +10,10 @@ enum class COLORS : uint8_t
     BLACK
 };
 
+inline COLORS reverse_color(COLORS color) {
+    return color == COLORS::WHITE ? COLORS::BLACK : COLORS::WHITE;
+}
+
 enum class MOVE_TYPE : uint8_t
 {
     NORMAL,

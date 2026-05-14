@@ -65,6 +65,7 @@ private:
     void add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int shift, MoveList &list);
 
     bool is_square_attacked(COLORS color, int sq);
+    bool is_line_attacked(COLORS color, int from, int to);
     void update_piece(int sq, COLORS color, PIECE_TYPE piece, bool add);
     bitboard *get_bitboard_by_piece(COLORS color, PIECE_TYPE piece);
 };

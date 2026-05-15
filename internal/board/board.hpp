@@ -19,7 +19,7 @@ struct MoveList
 
 class Board
 {
-public:
+private:
     Attacks *attacks;
 
     std::vector<Move> history;

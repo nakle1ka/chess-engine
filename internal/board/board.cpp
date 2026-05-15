@@ -82,13 +82,39 @@ MoveList Board::ugly_moves()
     bitboard normal_right = right_attack & ~rank_8_or_1;
     bitboard promo_right = right_attack & rank_8_or_1;
 
-    add_pawns_promotion_moves(color, promo_short, 8, list);
-    add_pawns_promotion_moves(color, promo_left, is_white_turn ? 7 : 9, list);
-    add_pawns_promotion_moves(color, promo_right, is_white_turn ? 9 : 7, list);
+    add_pawns_promotion_moves(color, promo_short, 0, list);
+    add_pawns_promotion_moves(color, promo_left, -1, list);
+    add_pawns_promotion_moves(color, promo_right, 1, list);
+
     add_pawns_moves(color, MOVE_TYPE::CAPTURE, normal_left, is_white_turn ? 7 : 9, list);
     add_pawns_moves(color, MOVE_TYPE::CAPTURE, normal_right, is_white_turn ? 9 : 7, list);
     add_pawns_moves(color, MOVE_TYPE::NORMAL, normal_short, 8, list);
     add_pawns_moves(color, MOVE_TYPE::NORMAL, long_push, 16, list);
+
+    if (en_passant_square != 64)
+    {
+        int rank_offset = is_white_turn ? -8 : +8;
+        int from_left = en_passant_square + rank_offset - 1;
+        int from_right = en_passant_square + rank_offset + 1;
+
+        if (en_passant_square % 8 != 0 && (pawns & (1ULL << from_left)))
+            list.add({from_left, en_passant_square,
+                      MOVE_TYPE::EN_PASSANT,
+                      color,
+                      PIECE_TYPE::PAWN,
+                      PIECE_TYPE::PAWN,
+                      PIECE_TYPE::NONE,
+                      castle_rights, en_passant_square});
+
+        if (en_passant_square % 8 != 7 && (pawns & (1ULL << from_right)))
+            list.add({from_right, static_cast<uint8_t>(en_passant_square),
+                      MOVE_TYPE::EN_PASSANT,
+                      color,
+                      PIECE_TYPE::PAWN,
+                      PIECE_TYPE::PAWN,
+                      PIECE_TYPE::NONE,
+                      castle_rights, en_passant_square});
+    }
 
     while (knights)
     {
@@ -135,56 +161,52 @@ MoveList Board::ugly_moves()
         if (
             (castle_rights & (1ULL << 0)) &&
             (blockers & WHITE_OO_MASK) == 0 &&
-            !is_line_attacked(COLORS::BLACK, 4, 6)
-        )
+            !is_line_attacked(COLORS::BLACK, 4, 6))
             list.add({4, 6,
                       MOVE_TYPE::CASTLE,
                       COLORS::WHITE,
                       PIECE_TYPE::KING,
                       PIECE_TYPE::NONE,
                       PIECE_TYPE::NONE,
-                      castle_rights});
+                      castle_rights, en_passant_square});
 
         if (
             (castle_rights & (1ULL << 1)) &&
             (blockers & WHITE_OOO_MASK) == 0 &&
-            !is_line_attacked(COLORS::BLACK, 2, 4)
-        )
+            !is_line_attacked(COLORS::BLACK, 2, 4))
             list.add({4, 2,
                       MOVE_TYPE::CASTLE,
                       COLORS::WHITE,
                       PIECE_TYPE::KING,
                       PIECE_TYPE::NONE,
                       PIECE_TYPE::NONE,
-                      castle_rights});
+                      castle_rights, en_passant_square});
     }
     else
     {
         if (
             (castle_rights & (1ULL << 2)) &&
             (blockers & BLACK_OO_MASK) == 0 &&
-            !is_line_attacked(COLORS::WHITE, 60, 62)
-        )
+            !is_line_attacked(COLORS::WHITE, 60, 62))
             list.add({60, 62,
                       MOVE_TYPE::CASTLE,
                       COLORS::BLACK,
                       PIECE_TYPE::KING,
                       PIECE_TYPE::NONE,
                       PIECE_TYPE::NONE,
-                      castle_rights});
+                      castle_rights, en_passant_square});
 
         if (
             (castle_rights & (1ULL << 3)) &&
             (blockers & BLACK_OOO_MASK) == 0 &&
-            !is_line_attacked(COLORS::WHITE, 58, 60)
-        )
+            !is_line_attacked(COLORS::WHITE, 58, 60))
             list.add({60, 58,
                       MOVE_TYPE::CASTLE,
                       COLORS::BLACK,
                       PIECE_TYPE::KING,
                       PIECE_TYPE::NONE,
                       PIECE_TYPE::NONE,
-                      castle_rights});
+                      castle_rights, en_passant_square});
     }
 
     return list;
@@ -217,7 +239,7 @@ void Board::add_piece_moves(
             color,
             piece, opponent_piece,
             PIECE_TYPE::NONE,
-            castle_rights);
+            castle_rights, en_passant_square);
 
         list.add(move);
     }
@@ -242,18 +264,26 @@ void Board::add_pawns_moves(
             PIECE_TYPE::PAWN,
             mailbox[to].first,
             PIECE_TYPE::NONE,
-            castle_rights);
+            castle_rights, en_passant_square);
         list.add(move);
     }
 }
 
-void Board::add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int shift, MoveList &list)
+void Board::add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int file_offset, MoveList &list)
 {
     while (attack_mask)
     {
         int to = bitScanForward(attack_mask);
-        int from = to - shift;
         attack_mask &= attack_mask - 1;
+
+        int to_file = to % 8;
+
+        int from_rank = is_white_turn ? 6 : 1;
+        int from_file = to_file - file_offset;
+
+        int from = from_rank * 8 + from_file;
+        if (from < 0 || from > 63 || from_file < 0 || from_file > 7)
+            continue;
 
         Move move(
             from, to,
@@ -262,7 +292,7 @@ void Board::add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int sh
             PIECE_TYPE::PAWN,
             mailbox[to].first,
             PIECE_TYPE::QUEEN,
-            castle_rights);
+            castle_rights, en_passant_square);
         list.add(move);
 
         move.set_promotion(PIECE_TYPE::ROOK);
@@ -292,11 +322,19 @@ void Board::ugly_move(Move move)
     COLORS opponent_color = reverse_color(move.get_color());
 
     remove_piece(move.get_from(), move.get_color(), move.get_piece());
+    bool remove_en_passant = true;
 
     switch (move.get_type())
     {
     case MOVE_TYPE::NORMAL:
     {
+        if (
+            move.get_piece() == PIECE_TYPE::PAWN &&
+            std::abs(move.get_from() - move.get_to()) == 16)
+        {
+            en_passant_square = is_white_turn ? move.get_to() - 8 : move.get_to() + 8;
+            remove_en_passant = false;
+        }
         add_piece(move.get_to(), move.get_color(), move.get_piece());
         break;
     }
@@ -341,6 +379,9 @@ void Board::ugly_move(Move move)
         break;
     }
     }
+
+    if (remove_en_passant)
+        en_passant_square = 64;
 
     if (move.get_piece() == PIECE_TYPE::KING)
     {
@@ -444,6 +485,7 @@ void Board::undo_move()
     }
 
     castle_rights = move.get_castle_rights();
+    en_passant_square = move.get_en_passant_square();
 }
 
 bool Board::validate_move(Move move)
@@ -550,31 +592,20 @@ bool Board::validate_pawn_move(Move move)
     }
     case MOVE_TYPE::EN_PASSANT:
     {
-        int history_size = history.size();
-        if (history_size == 0)
+        if (en_passant_square == 64)
+            return false;
+        if (move.get_to() != en_passant_square)
             return false;
 
-        Move last_move = history[history_size - 1];
+        int to_rank = en_passant_square / 8;
+        int to_file = en_passant_square % 8;
 
-        if (last_move.get_piece() != PIECE_TYPE::PAWN)
+        int from_rank = is_white ? to_rank - 1 : to_rank + 1;
+        if (move.get_from() / 8 != from_rank)
             return false;
 
-        int from_rank = is_white ? 6 : 1, to_rank = is_white ? 4 : 3;
-        int last_move_from_rank = last_move.get_from() / 8;
-        int last_move_to_rank = last_move.get_to() / 8;
-        int move_from_rank = move.get_from() / 8;
-
-        if (last_move_from_rank != from_rank || last_move_to_rank != to_rank)
-            return false;
-
-        if (move_from_rank != last_move_to_rank)
-            return false;
-
-        if (std::abs(move.get_from() % 8 - last_move.get_to() % 8) != 1)
-            return false;
-
-        int step = is_white ? -8 : +8;
-        if (move.get_to() + step != last_move.get_to())
+        int from_file = move.get_from() % 8;
+        if (abs(from_file - to_file) != 1)
             return false;
 
         return true;

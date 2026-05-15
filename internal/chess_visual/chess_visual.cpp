@@ -87,8 +87,6 @@ Move ChessVisual::parse_move(const std::string &input)
     int from = from_rank * 8 + from_file;
     int to = to_rank * 8 + to_file;
 
-    
-
     Move move;
     move.set_from(from);
     move.set_to(to);

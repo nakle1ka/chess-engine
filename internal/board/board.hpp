@@ -19,12 +19,13 @@ struct MoveList
 
 class Board
 {
-private:
+public:
     Attacks *attacks;
 
     std::vector<Move> history;
     bool is_white_turn = true;
     uint8_t castle_rights = 0b0000;
+    uint8_t en_passant_square = 64;
 
     std::pair<PIECE_TYPE, COLORS> mailbox[64];
 
@@ -62,7 +63,7 @@ private:
 
     void add_piece_moves(int from, COLORS color, bitboard attack_mask, MoveList &list);
     void add_pawns_moves(COLORS color, MOVE_TYPE type, bitboard attack_mask, int shift, MoveList &list);
-    void add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int shift, MoveList &list);
+    void add_pawns_promotion_moves(COLORS color, bitboard attack_mask, int file_offset, MoveList &list);
 
     bool is_square_attacked(COLORS color, int sq);
     bool is_line_attacked(COLORS color, int from, int to);

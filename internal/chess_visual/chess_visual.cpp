@@ -1,3 +1,4 @@
+#include <limits>
 #include "./chess_visual.hpp"
 #include "../shared/move.hpp"
 
@@ -69,9 +70,7 @@ void ChessVisual::display()
 Move ChessVisual::parse_move(const std::string &input)
 {
     if (input.length() < 4)
-    {
         throw std::invalid_argument("Invalid input format");
-    }
 
     int from_file = input[0] - 'a';
     int from_rank = input[1] - '1';
@@ -80,9 +79,7 @@ Move ChessVisual::parse_move(const std::string &input)
 
     if (from_file < 0 || from_file > 7 || from_rank < 0 || from_rank > 7 ||
         to_file < 0 || to_file > 7 || to_rank < 0 || to_rank > 7)
-    {
         throw std::invalid_argument("Coordinates out of range");
-    }
 
     int from = from_rank * 8 + from_file;
     int to = to_rank * 8 + to_file;
@@ -136,6 +133,7 @@ MOVE_TYPE ChessVisual::determine_move_type(Move &move, const std::string &input)
                 std::cout << "Choose promotion (q/r/b/n): ";
                 char prom_char;
                 std::cin >> prom_char;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 switch (prom_char)
                 {
                 case 'q':
@@ -198,6 +196,7 @@ void ChessVisual::play()
         {
 
             board->undo_move();
+            display();
             continue;
         }
 
@@ -221,7 +220,7 @@ void ChessVisual::play()
             break;
         }
 
-        Move alg_move = ai->get_best_move(5);
+        Move alg_move = ai->get_best_move(6);
         board->ugly_move(alg_move);
 
         display();

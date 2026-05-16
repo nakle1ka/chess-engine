@@ -53,6 +53,9 @@ public:
     bool is_king_checked(COLORS color);
 
     COLORS get_turn_color() const;
+    bitboard get_pawns(COLORS color) const;
+    bitboard get_king(COLORS color) const;
+    uint8_t get_castle_rights() const;
     
 
 private:

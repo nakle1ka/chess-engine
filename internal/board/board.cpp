@@ -786,7 +786,7 @@ bool Board::is_square_attacked(COLORS color, int sq)
 
 bool Board::is_line_attacked(COLORS color, int from, int to)
 {
-    if (from < to)
+    if (from > to)
         std::swap(from, to);
 
     for (int i = from; i <= to; ++i)
@@ -844,4 +844,19 @@ std::pair<PIECE_TYPE, COLORS> Board::piece_at(int sq)
 COLORS Board::get_turn_color() const
 {
     return is_white_turn ? COLORS::WHITE : COLORS::BLACK;
+}
+
+bitboard Board::get_pawns(COLORS color) const
+{
+    return color == COLORS::WHITE ? w_pawns : b_pawns;
+}
+
+bitboard Board::get_king(COLORS color) const
+{
+    return color == COLORS::WHITE ? w_king : b_king;
+}
+
+uint8_t Board::get_castle_rights() const
+{
+    return castle_rights;
 }

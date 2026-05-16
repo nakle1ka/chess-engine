@@ -25,9 +25,8 @@ int ChessVisual::piece_to_index(PIECE_TYPE piece)
     }
 }
 
-void ChessVisual::display()
+void ChessVisual::display(bool flip)
 {
-
 #ifdef _WIN32
     system("cls");
 #else
@@ -36,35 +35,60 @@ void ChessVisual::display()
 
     std::cout << "\n  +------------------------+\n";
 
-    for (int rank = 7; rank >= 0; rank--)
-    {
-        std::cout << (rank + 1) << " |";
-
-        for (int file = 0; file < 8; file++)
+    if (!flip) {
+        // Обычное отображение (белые снизу)
+        for (int rank = 7; rank >= 0; rank--)
         {
-            int square = rank * 8 + file;
-            auto [piece, color] = board->piece_at(square);
+            std::cout << (rank + 1) << " |";
 
-            if (piece == PIECE_TYPE::NONE)
+            for (int file = 0; file < 8; file++)
             {
-                if ((rank + file) % 2 == 0)
-                    std::cout << " # ";
-                else
-                    std::cout << "   ";
+                int square = rank * 8 + file;
+                print_square(square, rank, file);
             }
-            else
-            {
-                bool is_white = (color == COLORS::WHITE);
-                int index = piece_to_index(piece);
-                std::cout << " " << PIECE_SYMBOLS[is_white ? 0 : 1][index] << " ";
-            }
+
+            std::cout << "|\n";
         }
 
-        std::cout << "|\n";
-    }
+        std::cout << "  +------------------------+\n";
+        std::cout << "    a  b  c  d  e  f  g  h\n\n";
+    } else {
+        // Перевернутое отображение (черные снизу)
+        for (int rank = 0; rank < 8; rank++)
+        {
+            std::cout << (rank + 1) << " |";
 
-    std::cout << "  +------------------------+\n";
-    std::cout << "    a  b  c  d  e  f  g  h\n\n";
+            for (int file = 7; file >= 0; file--)
+            {
+                int square = rank * 8 + file;
+                print_square(square, rank, file);
+            }
+
+            std::cout << "|\n";
+        }
+
+        std::cout << "  +------------------------+\n";
+        std::cout << "    h  g  f  e  d  c  b  a\n\n";
+    }
+}
+
+void ChessVisual::print_square(int square, int rank, int file)
+{
+    auto [piece, color] = board->piece_at(square);
+
+    if (piece == PIECE_TYPE::NONE)
+    {
+        if ((rank + file) % 2 == 0)
+            std::cout << " # ";
+        else
+            std::cout << "   ";
+    }
+    else
+    {
+        bool is_white = (color == COLORS::WHITE);
+        int index = piece_to_index(piece);
+        std::cout << " " << PIECE_SYMBOLS[is_white ? 0 : 1][index] << " ";
+    }
 }
 
 Move ChessVisual::parse_move(const std::string &input)
@@ -177,61 +201,99 @@ MOVE_TYPE ChessVisual::determine_move_type(Move &move, const std::string &input)
 void ChessVisual::play()
 {
     std::string input;
-    display();
+    
+    // Выбор стороны
+    COLORS player_color;
+    while (true) {
+        std::cout << "Choose your side (w/b): ";
+        std::getline(std::cin, input);
+        
+        if (input == "w" || input == "W") {
+            player_color = COLORS::WHITE;
+            break;
+        } else if (input == "b" || input == "B") {
+            player_color = COLORS::BLACK;
+            break;
+        } else {
+            std::cout << "Invalid choice. Enter 'w' for White or 'b' for Black.\n";
+        }
+    }
+    
+    std::cout << "You are playing as " << (player_color == COLORS::WHITE ? "White" : "Black") << "\n";
+    
+    // Переворачиваем доску для черных
+    bool flip_board = (player_color == COLORS::BLACK);
+    
+    display(flip_board);
+
+    // Если игрок выбрал черных, AI делает первый ход
+    if (player_color == COLORS::BLACK) {
+        std::cout << "AI is thinking...\n";
+        Move alg_move = ai->get_best_move(6);
+        board->ugly_move(alg_move);
+        display(flip_board);
+    }
 
     while (true)
     {
         COLORS turn_color = board->get_turn_color();
         COLORS opponent_color = turn_color == COLORS::WHITE ? COLORS::BLACK : COLORS::WHITE;
 
-        std::cout << (turn_color == COLORS::WHITE ? "White" : "Black") << "'s turn: ";
-        std::getline(std::cin, input);
+        // Ход игрока
+        if (turn_color == player_color) {
+            std::cout << "Your turn: ";
+            std::getline(std::cin, input);
 
-        if (input == "quit" || input == "exit")
-        {
-            break;
+            if (input == "quit" || input == "exit")
+            {
+                break;
+            }
+
+            if (input == "undo")
+            {
+                // Отменяем два хода (ход игрока и ход AI)
+                board->undo_move();
+                board->undo_move();
+                display(flip_board);
+                continue;
+            }
+
+            Move move = parse_move(input);
+            bool moved = board->make_move(move);
+
+            if (!moved)
+            {
+                std::cout << "Invalid move\n";
+                continue;
+            }
+
+            display(flip_board);
+
+            if (board->is_game_end())
+            {
+                if (board->is_king_checked(opponent_color))
+                    std::cout << "You win!\n";
+                else
+                    std::cout << "Stalemate!\n";
+                break;
+            }
         }
+        // Ход AI
+        else {
+            std::cout << "AI is thinking...\n";
+            Move alg_move = ai->get_best_move(6);
+            board->ugly_move(alg_move);
 
-        if (input == "undo")
-        {
+            display(flip_board);
 
-            board->undo_move();
-            display();
-            continue;
-        }
-
-        Move move = parse_move(input);
-        bool moved = board->make_move(move);
-
-        if (!moved)
-        {
-            std::cout << "Invalid move\n";
-            continue;
-        }
-
-        display();
-
-        if (board->is_game_end())
-        {
-            if (board->is_king_checked(opponent_color))
-                std::cout << (turn_color == COLORS::WHITE ? "White's " : "Black's ") << "win!\n";
-            else
-                std::cout << "Stalemate!\n";
-            break;
-        }
-
-        Move alg_move = ai->get_best_move(6);
-        board->ugly_move(alg_move);
-
-        display();
-
-        if (board->is_game_end())
-        {
-            if (board->is_king_checked(turn_color))
-                std::cout << (opponent_color == COLORS::WHITE ? "White`s " : "Black`s ") << "win!\n";
-            else
-                std::cout << "Stalemate!\n";
-            break;
+            if (board->is_game_end())
+            {
+                if (board->is_king_checked(player_color))
+                    std::cout << "AI wins!\n";
+                else
+                    std::cout << "Stalemate!\n";
+                break;
+            }
         }
     }
 }

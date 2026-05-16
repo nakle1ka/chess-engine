@@ -22,7 +22,8 @@ private:
 public:
     ChessVisual(Board *_board, AI *_ai);
 
-    void display();
+    void display(bool flip = false);
+    void print_square(int square, int rank, int file);
     Move parse_move(const std::string &input);
     void play();
 };
